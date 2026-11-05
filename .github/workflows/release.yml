@@ -1,0 +1,31 @@
+name: Publish audited installers
+on:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify release version and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "v$(tr -d '\n' < VERSION)"
+          cd dist
+          sha256sum --check SHA256SUMS.txt
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" \
+            dist/AutoAppHPD.dmg dist/AutoAppHPD.pkg dist/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "AutoAppHPD $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md

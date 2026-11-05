@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+# The bundle identifier and settings paths are intentionally retained for upgrades.
+target="${3%/}"
+installed="$target/Applications/AutoAppHPD.app"
+legacy="$target/Applications/Android Release Tool.app"
+identifier="com.local.AndroidReleaseTool"
+if [ -d "$installed" ] && [ -d "$legacy" ]; then
+  new_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$installed/Contents/Info.plist" 2>/dev/null || true)
+  old_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$legacy/Contents/Info.plist" 2>/dev/null || true)
+  if [ "$new_id" = "$identifier" ] && [ "$old_id" = "$identifier" ]; then
+    /usr/bin/codesign --verify --deep --strict "$installed"
+    # Only remove the superseded app bundle. Project files and user data are untouched.
+    /bin/rm -rf "$legacy"
+  fi
+fi
+exit 0

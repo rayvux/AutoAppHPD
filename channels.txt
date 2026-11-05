@@ -1,0 +1,7 @@
+# 每行一个渠道，空行和 # 开头的行会被忽略
+yyb
+huawei
+honor
+xiaomi
+oppo
+vivo
