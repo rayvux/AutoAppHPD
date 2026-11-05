@@ -19,12 +19,23 @@ jobs:
           test "$GITHUB_REF_NAME" = "v$(tr -d '\n' < VERSION)"
           cd dist
           sha256sum --check SHA256SUMS.txt
-      - name: Publish release assets
+      - name: Publish or verify release assets
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          existing_tags=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq '.[].tag_name')
+          if grep -Fxq -- "$GITHUB_REF_NAME" <<< "$existing_tags"; then
+            download_dir=$(mktemp -d)
+            gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$download_dir" \
+              --pattern AutoAppHPD.dmg --pattern AutoAppHPD.pkg --pattern SHA256SUMS.txt
+            for asset in AutoAppHPD.dmg AutoAppHPD.pkg SHA256SUMS.txt; do
+              cmp "dist/$asset" "$download_dir/$asset"
+            done
+            echo "Existing release assets match the tagged files."
+            exit 0
+          fi
           gh release create "$GITHUB_REF_NAME" \
             dist/AutoAppHPD.dmg dist/AutoAppHPD.pkg dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" --verify-tag \
